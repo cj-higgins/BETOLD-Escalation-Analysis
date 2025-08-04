@@ -13,7 +13,7 @@ This repository contains code and outputs for analyzing the [BETOLD dataset](htt
 - `BETOLD_escalation_only.csv` — Subset of conversations with escalation
 - `BETOLD_escalation_dialogs.json` — Full dialog structure of escalated conversations
 
-> **Note:** This repo does **not** contain the dataset. Download `BETOLD_train.json` from the [official repo](https://github.com/stanfordnlp/betold) and place it in the root folder.
+> **Note:** This repo does **not** contain the dataset. Download `BETOLD_train.json` from the [official repo](https://github.com/telepathylabsai/BETOLD_dataset) and place it in the root folder.
 
 ---
 
