@@ -2,7 +2,7 @@
 
 This repository contains code and outputs for analyzing the [BETOLD dataset](https://github.com/stanfordnlp/betold), a corpus of chatbot–user interactions annotated for escalation behavior and user distress. The analysis focuses on sentiment trajectory, escalation triggers, and LUHF-tagged dialogs.
 
-> 📖 Related essay: [Consultation over Escalation](https://higginscj.substack.com/p/consultation-over-escalation)
+> 📖 Related Substack essay: [Consultation over Escalation](https://higginscj.substack.com/p/trusting-the-chatbot-more-than-the)
 
 ---
 
