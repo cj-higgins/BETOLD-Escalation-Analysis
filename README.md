@@ -1,6 +1,6 @@
 # BETOLD Escalation Analysis
 
-This repository contains code and outputs for analyzing the [BETOLD dataset](https://github.com/stanfordnlp/betold), a corpus of chatbot–user interactions annotated for escalation behavior and user distress. The analysis focuses on sentiment trajectory, escalation triggers, and LUHF-tagged dialogs.
+This repository contains code and saved outputs from an exploratory analysis of the [BETOLD dataset](https://github.com/telepathylabsai/BETOLD_dataset), a privacy-preserving corpus of chatbot–user customer-service interactions labeled for late user-initiated forwards or hang-ups (LUHF). The script in this repository analyzes the 10,819-conversation training split and focuses on late-conversation intent valence, user requests for a human agent, and LUHF.
 
 > 📖 Related Substack essay: [Consultation over Escalation](https://higginscj.substack.com/p/trusting-the-chatbot-more-than-the)
 
@@ -9,11 +9,19 @@ This repository contains code and outputs for analyzing the [BETOLD dataset](htt
 ## 📂 Files
 
 - `BETOLD_escalation_analysis.py` — Main analysis script
-- `BETOLD_clean_escalations_detailed.csv` — Full analysis of all conversations
-- `BETOLD_escalation_only.csv` — Subset of conversations with escalation
-- `BETOLD_escalation_dialogs.json` — Full dialog structure of escalated conversations
+- `BETOLD_clean_escalations_detailed.csv` — Analysis of all 10,819 conversations in `BETOLD_train.json`
+- `BETOLD_escalation_only.csv` — Subset containing a `transfer_agent` user intent
+- `BETOLD_escalation_dialogs.json` — Full dialog structure for that subset
 
-> **Note:** This repo does **not** contain the dataset. Download `BETOLD_train.json` from the [official repo](https://github.com/telepathylabsai/BETOLD_dataset) and place it in the root folder.
+> **Note:** This repo does **not** contain the source dataset. Download `BETOLD_train.json` from the [official repo](https://github.com/telepathylabsai/BETOLD_dataset) and place it in the root folder.
+
+## Scope and interpretation
+
+- The full BETOLD dataset contains 13,524 conversations; this script uses only the 10,819-conversation training split.
+- The `escalation` field is triggered by the user intent `transfer_agent`. It therefore marks a **request for a human agent**, not a verified completed handoff.
+- The sentiment proxy explicitly codes selected intents as positive, neutral, or negative; intents not listed in those mappings default to neutral.
+- `final4_turns_composite_score` describes the final four turns of the **whole conversation**. `pre_escalation_final4_score` separately describes the final four turns before the first `transfer_agent` request.
+- These are exploratory intent-based proxies, not validated measures of rapport or customer satisfaction.
 
 ---
 
@@ -37,9 +45,9 @@ python BETOLD_escalation_analysis.py
 |--------|-------------|
 | `conversation_id` | Unique ID per conversation |
 | `luhf_tag` | LUHF classification (`luhf` or `non_luhf`) |
-| `escalation` | "escalation" if `transfer_agent` occurred |
+| `escalation` | `"escalation"` if the user intent `transfer_agent` occurred |
 | `total_turns` | Total number of utterances |
-| `user_turns_before_escalation` | NLU turns before first escalation |
+| `user_turns_before_escalation` | NLU turns before first transfer request |
 | `total_user_turns` | All NLU (user) turns |
 
 ### 🧠 Intent Sentiment Counts
@@ -72,22 +80,22 @@ python BETOLD_escalation_analysis.py
 |--------|-------------|
 | `final4_turns_composite_score` | Final 4 turn sentiment score |
 | `final4_score_with_length_penalty` | Final 4 × exp(–0.05 × length) |
-| `pre_escalation_final4_score` | Final 4 score *before* escalation |
+| `pre_escalation_final4_score` | Final 4 score before first transfer request |
 
 ### ☎️ Escalation-Specific Heuristics
 
 | Column | Description |
 |--------|-------------|
 | `last_turn_speaker` | Final speaker (`nlu` or `nlg`) |
-| `transfer_assumed_success` | True if convo ends w/ user post-transfer |
-| `escalation_final_turn_proximity` | True if transfer near convo end |
-| `early_escalation_but_luhf` | LUHF-tagged & escalated early (≤3rd turn) |
+| `transfer_assumed_success` | Heuristic: transfer request present and conversation ends on a user turn |
+| `escalation_final_turn_proximity` | True if the last transfer request occurs near conversation end |
+| `early_escalation_but_luhf` | LUHF-tagged & transfer requested early (≤3rd turn) |
 
 ---
 
 ## ⚖️ License
 
-This code is released under the [Apache 2.0 License](LICENSE). The BETOLD dataset is also Apache 2.0 licensed; please see the [original repo](https://github.com/stanfordnlp/betold) for details.
+This code is released under the [Apache 2.0 License](LICENSE). The BETOLD dataset is also Apache 2.0 licensed; please see the [official repo](https://github.com/telepathylabsai/BETOLD_dataset) for details.
 
 ---
 
