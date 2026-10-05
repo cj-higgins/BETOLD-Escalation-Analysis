@@ -1,105 +1,91 @@
-# BETOLD Escalation Analysis
+# BETOLD Transfer-Request Analysis
 
-This repository contains code and saved outputs from an exploratory analysis of the [BETOLD dataset](https://github.com/telepathylabsai/BETOLD_dataset), a privacy-preserving corpus of chatbot–user customer-service interactions labeled for late user-initiated forwards or hang-ups (LUHF). The script in this repository analyzes the 10,819-conversation training split and focuses on late-conversation intent valence, user requests for a human agent, and LUHF.
+This repository contains a small exploratory analysis of the [BETOLD dataset](https://github.com/telepathylabsai/BETOLD_dataset), a privacy-preserving corpus of chatbot–user customer-service conversations. The analysis asks whether conversations containing a user request for a human agent can nevertheless end with strongly positive interaction patterns.
 
-> 📖 Related Substack essay: [Consultation over Escalation](https://higginscj.substack.com/p/trusting-the-chatbot-more-than-the)
+The script uses the 10,819-conversation training split (`BETOLD_train.json`). The full BETOLD dataset contains 13,524 conversations.
 
----
+> 📖 Related Substack essay: [Trusting the Chatbot More Than the Front Desk](https://higginscj.substack.com/p/trusting-the-chatbot-more-than-the)
 
-## 📂 Files
+## What the analysis does
 
-- `BETOLD_escalation_analysis.py` — Main analysis script
-- `BETOLD_clean_escalations_detailed.csv` — Analysis of all 10,819 conversations in `BETOLD_train.json`
-- `BETOLD_escalation_only.csv` — Subset containing a `transfer_agent` user intent
-- `BETOLD_escalation_dialogs.json` — Full dialog structure for that subset
+BETOLD does not include raw conversation text. Instead, each turn is represented by an NLU or NLG intent. I therefore use a deliberately simple intent-valence proxy:
 
-> **Note:** This repo does **not** contain the source dataset. Download `BETOLD_train.json` from the [official repo](https://github.com/telepathylabsai/BETOLD_dataset) and place it in the root folder.
+- selected positive intents = `+1`
+- selected negative intents = `-1`
+- all other intents = `0`
+
+For each conversation, `final4_score` is the sum of those values over the final four turns. A score of 3 or higher therefore means that at least three of the final four turns were coded positive, with no offsetting negative turn large enough to bring the total below 3.
+
+The script then:
+
+1. identifies conversations containing the user intent `transfer_agent`;
+2. compares the share of high-positive endings (`final4_score >= 3`) between conversations with and without a transfer request;
+3. fits a simple logistic regression, `LUHF ~ final4_score`, as a sanity check on whether the proxy moves in the expected direction against BETOLD's late user-initiated forward/hang-up label; and
+4. writes a compact conversation-level analysis file plus a transfer-request subset to `outputs/`.
+
+## Headline descriptive result
+
+In the training split:
+
+- 87 conversations contain a `transfer_agent` request, and 15 of them (17.2%) have `final4_score >= 3`.
+- 10,732 conversations do not contain a transfer request, and 2,704 of them (25.2%) have `final4_score >= 3`.
+
+The point is not that a chatbot should ignore requests for a human. It is that a request for human assistance and a breakdown in the chatbot interaction are not necessarily the same thing.
 
 ## Scope and interpretation
 
-- The full BETOLD dataset contains 13,524 conversations; this script uses only the 10,819-conversation training split.
-- The `escalation` field is triggered by the user intent `transfer_agent`. It therefore marks a **request for a human agent**, not a verified completed handoff.
-- The sentiment proxy explicitly codes selected intents as positive, neutral, or negative; intents not listed in those mappings default to neutral.
-- `final4_turns_composite_score` describes the final four turns of the **whole conversation**. `pre_escalation_final4_score` separately describes the final four turns before the first `transfer_agent` request.
-- These are exploratory intent-based proxies, not validated measures of rapport or customer satisfaction.
+- `transfer_agent` means the user **asked to transfer to a human agent**. It does not establish that a handoff actually occurred.
+- `final4_score` describes the end of the whole conversation, not necessarily the interaction state at the moment the transfer was requested.
+- `pre_transfer_final4_score` is included as a separate descriptive field for the four turns immediately before the first transfer request.
+- The intent-valence score is an exploratory proxy, not a transcript-level sentiment model or a direct measure of customer satisfaction.
+- The logistic regression is used as a check that the proxy contains behaviorally relevant signal, not as a causal model.
 
----
+## How to run
 
-## 🚀 How to Run
+1. Clone this repository.
+2. Download `BETOLD_train.json` from the [official BETOLD repository](https://github.com/telepathylabsai/BETOLD_dataset) and place it in this repository's root directory.
+3. Install dependencies:
 
-1. Clone the repo
-2. Place `BETOLD_train.json` in the root directory
-3. Run:
+```bash
+pip install -r requirements.txt
+```
+
+4. Run:
 
 ```bash
 python BETOLD_escalation_analysis.py
 ```
 
----
+The script prints the descriptive comparison and logistic-regression summary statistics, then creates:
 
-## 📊 Output Column Descriptions
+- `outputs/BETOLD_analysis.csv`
+- `outputs/BETOLD_transfer_requests.csv`
 
-### 🔍 Conversation & Escalation Metadata
+Generated outputs and the source dataset are intentionally excluded from version control.
 
-| Column | Description |
-|--------|-------------|
-| `conversation_id` | Unique ID per conversation |
-| `luhf_tag` | LUHF classification (`luhf` or `non_luhf`) |
-| `escalation` | `"escalation"` if the user intent `transfer_agent` occurred |
-| `total_turns` | Total number of utterances |
-| `user_turns_before_escalation` | NLU turns before first transfer request |
-| `total_user_turns` | All NLU (user) turns |
-
-### 🧠 Intent Sentiment Counts
+## Output columns
 
 | Column | Description |
-|--------|-------------|
-| `nlu_positive_count` | # of positive NLU intents |
-| `nlu_neutral_count` | # of neutral NLU intents |
-| `nlu_negative_count` | # of negative NLU intents |
-| `nlg_positive_count` | # of positive NLG intents |
-| `nlg_neutral_count` | # of neutral NLG intents |
-| `nlg_negative_count` | # of negative NLG intents |
-| `nlg_neg_intents` | Comma-separated list of neg. NLG intents |
-| `last_bot_intent` | Final bot intent in the conversation |
+|---|---|
+| `conversation_id` | Row index within the training split |
+| `luhf_tag` | BETOLD label: `luhf` or `not_luhf` |
+| `transfer_requested` | Whether the conversation contains a user `transfer_agent` intent |
+| `total_turns` | Number of turns in the conversation |
+| `final4_score` | Intent-valence score over the final four turns |
+| `pre_transfer_final4_score` | Intent-valence score over the final four turns before the first transfer request; for conversations without one, the final four turns of the conversation |
 
-### 📈 Trajectory Scores
+## Files
 
-| Column | Description |
-|--------|-------------|
-| `nlu_trajectory_index` | Pos – neg NLU count |
-| `nlg_trajectory_index` | Pos – neg NLG count |
-| `composite_trajectory_index` | Sum of NLU + NLG trajectories |
-| `nlu_density_index` | NLU trajectory ÷ user turns |
-| `composite_density_index` | Composite ÷ total turns |
-| `adjusted_composite_index` | Composite × exp(–0.05 × length) |
+- `BETOLD_escalation_analysis.py` — complete analysis
+- `requirements.txt` — Python dependencies
+- `.gitignore` — excludes the source dataset and generated outputs
+- `LICENSE` — Apache 2.0 license
 
-### 🧪 Final Turn Sentiment
+## License
 
-| Column | Description |
-|--------|-------------|
-| `final4_turns_composite_score` | Final 4 turn sentiment score |
-| `final4_score_with_length_penalty` | Final 4 × exp(–0.05 × length) |
-| `pre_escalation_final4_score` | Final 4 score before first transfer request |
+This code is released under the [Apache 2.0 License](LICENSE). The BETOLD dataset is also Apache 2.0 licensed; see the [official repository](https://github.com/telepathylabsai/BETOLD_dataset) for details.
 
-### ☎️ Escalation-Specific Heuristics
-
-| Column | Description |
-|--------|-------------|
-| `last_turn_speaker` | Final speaker (`nlu` or `nlg`) |
-| `transfer_assumed_success` | Heuristic: transfer request present and conversation ends on a user turn |
-| `escalation_final_turn_proximity` | True if the last transfer request occurs near conversation end |
-| `early_escalation_but_luhf` | LUHF-tagged & transfer requested early (≤3rd turn) |
-
----
-
-## ⚖️ License
-
-This code is released under the [Apache 2.0 License](LICENSE). The BETOLD dataset is also Apache 2.0 licensed; please see the [official repo](https://github.com/telepathylabsai/BETOLD_dataset) for details.
-
----
-
-## ✍️ Author
+## Author
 
 **CJ Higgins**  
 [Substack – Curdled Incompleteness Theorem](https://higginscj.substack.com)  
